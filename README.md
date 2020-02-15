@@ -5,7 +5,7 @@ There are 2 main ideas:
 * It is also possible to generate cylindric perspective. Most softwares propose this perspective only for panos
 
 This tool enables to rotate the camera toward the subject you want to crop.
-This will generate a more natural picture just as if you had shot it directly directed toward your subject.
+This will generate a **more natural picture** just as if you had shot it directly directed toward your subject.
 Besides, if the crop remains large (for the width), the cylindric perspective can improve even more the image.
 
 # Beware:
