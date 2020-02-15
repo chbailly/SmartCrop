@@ -1,5 +1,5 @@
 from matplotlib.widgets import RectangleSelector
-from matplotlib.widgets import TextBox, CheckButtons
+from matplotlib.widgets import TextBox, CheckButtons, Button
 from os.path import splitext
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,10 +8,11 @@ import threading
 import sys
 
 
-
-
 img2 = None
 first = True
+
+x1,y1, x2, y2 = None, None, None ,  None
+
 
 def rotatez(p, angle):
     matz = np.array([
@@ -47,24 +48,68 @@ def rotate_axe(axe, target_point, angles):
 def norm(v):
     return np.sqrt(v[0]*v[0] + v[1] * v[1] + v[2] * v[2])
 
+
 def line_select_callback(eclick, erelease):
-    global img2, first, cylindric
+    global x1, x2, y1, y2
+    
     'eclick and erelease are the press and release events'
     
     x1, y1 = int(eclick.xdata), int(eclick.ydata)
     x2, y2 = int(erelease.xdata), int(erelease.ydata)
-
     print("(%3.2f, %3.2f) --> (%3.2f, %3.2f)" % (x1, y1, x2, y2))
-    print(" The button you used were: %s %s" % (eclick.button, erelease.button))
-    
-    if not first:
+
+def change_text_button(label):
+    axbox2.clear()
+    button_box.__init__(axbox2, label)
+    button_box.on_clicked(make_crop)
+
+def do_back(event_back):
+    global x1, x2, y1, y2
+
+    if button_box.label.get_text() == "BasicCrop":
+        img_ax.imshow(img)
+
+    elif button_box.label.get_text() == "Save":
+        img_ax.imshow(img2)
+
+    previous = {
+        "Save": 'BasicCrop',
+        'BasicCrop': 'SmartCrop',
+        'SmartCrop': 'SmartCrop'
+    }
+
+    change_text_button(previous[button_box.label.get_text()])
+    x1, x2, y1, y2 = None, None, None, None
+    plt.draw()
+
+def make_crop(event_crop):
+    global x1, x2, y1, y2
+    global img2, img3, first, cylindric
+    global button_box
+
+    if button_box.label.get_text() == "BasicCrop":
+        if x1 is None:
+            x1, y1 = 0, 0
+            x2 = img.shape[1]
+            y2 = img.shape[0]
+
         img3 = img2[y1:y2,x1:x2,:]
         img_ax.imshow(img3)
+        change_text_button("Save")
+        plt.draw()
+        return
+    elif button_box.label.get_text() == "Save":
         name, ext = splitext(img_file)
         mpimg.imsave(name + "_perspective" + ext, img3)
         plt.draw()
         return
 
+    if x1 is None:
+        x1, y1 = 0, 0
+        x2 = img.shape[1]
+        y2 = img.shape[0]
+
+    print("Start smart crop")
     first = False
 
     posx = (y1 + y2)/2
@@ -76,7 +121,6 @@ def line_select_callback(eclick, erelease):
         cylindric = 2
     
 
-  
     pixel_size = sensor_height/sensor_nb_height
 
     mid_sensor_pos = (mid_sensor - np.array([posx, posy])) * pixel_size
@@ -89,8 +133,6 @@ def line_select_callback(eclick, erelease):
 
 
     target_point = rotatey(rotatez([[fl, 0, 0]], angle0), angle1)
-    print(norm(target_point1[0]))
-    print(norm(target_point[0]))
     p2 = np.array([
         [fl, (mid_sensor[0]-posx) * pixel_size, (posy - mid_sensor[1]) * pixel_size],
         [fl, (mid_sensor[0]-y1) * pixel_size, (x1 - mid_sensor[1]) * pixel_size],
@@ -197,9 +239,11 @@ def line_select_callback(eclick, erelease):
 
         img2[line, y, :] =  img[orig[line,0], orig[line,1]]
 
+    x1, x2, y1, y2 = None, None, None, None
+    change_text_button("BasicCrop")
     img_ax.imshow(img2)
     plt.draw()
-
+    print("End smart crop")
 
 def toggle_selector(event):
     print(' Key pressed.')
@@ -212,7 +256,7 @@ def toggle_selector(event):
 
 def submit_fl(fl_text):
     global fl
-    print("submit")
+    print("FL changed")
     fl = float(fl_text)
 
 
@@ -229,7 +273,6 @@ else:
     img_file = sys.argv[1]
 
 
-print(splitext(img_file))
 img=mpimg.imread(img_file)
 
 cylindric = False
@@ -241,7 +284,7 @@ try:
     exif = {
         PIL.ExifTags.TAGS[k]: v
         for k, v in img_pil._getexif().items()
-        if k in PIL.ExifTags.TAGS
+        if k in PIL.ExifTags.TAGS 
     }
     fl = exif["FocalLengthIn35mmFilm"]
 except Exception:
@@ -252,32 +295,42 @@ sensor_nb_width = img.shape[1]
 
 mid_sensor = [sensor_nb_height/2, sensor_nb_width/2]
 
+# calculation to support different ration (m43..)
 sensor_height = 24
 sensor_width = 36
+sensor_diag = np.sqrt(24*24 + 36*36)
+ratio = sensor_nb_width/sensor_nb_height
+
+sensor_height = sensor_diag/np.sqrt(1 + ratio * ratio)
+sensor_width = ratio * sensor_height
 cylindric = False
 
 img_axe = plt.gca()
 
 imgplot = plt.imshow(img)
 
-axbox = plt.axes([0.15, 0.05, 0.4, 0.075])
+axbox = plt.axes([0.15, 0.05, 0.1, 0.075])
 text_box = TextBox(axbox, 'FL:', initial=str(fl))
 text_box.on_submit(submit_fl)
 
+axbox2 = plt.axes([0.25, 0.05, 0.2, 0.075])
+button_box = Button(axbox2, 'SmartCrop')
+button_box.on_clicked(make_crop)
 
-axbox2 = plt.axes([0.6, 0.05, 0.15, 0.075])
+axbox3 = plt.axes([0.45, 0.05, 0.1, 0.075])
+button_box2 = Button(axbox3, 'Back')
+button_box2.on_clicked(do_back)
+
+axbox4 = plt.axes([0.55, 0.05, 0.15, 0.075])
 labels = ["cylindric"]
-check = CheckButtons(axbox2, labels)
+check = CheckButtons(axbox4, labels)
 
 def func(label):
     global cylindric
     cylindric = check.get_status()[0]
 
 check.on_clicked(func)
-#text_box = TextBox(axbox2, 'FL2:', initial="")
-#text_box.on_submit(submit_fl)
 
-print("\n      click  -->  release")
 
 # drawtype is 'box' or 'line' or 'none'
 toggle_selector.RS = RectangleSelector(img_ax, line_select_callback,
