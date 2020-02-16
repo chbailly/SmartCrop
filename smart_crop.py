@@ -1,343 +1,222 @@
-from matplotlib.widgets import RectangleSelector
-from matplotlib.widgets import TextBox, CheckButtons, Button
-from os.path import splitext
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import threading
+
+
 import sys
+from PyQt5 import QtGui, QtCore
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt, QPoint, QRect, QSize
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QRubberBand, QPushButton,\
+    QHBoxLayout, QVBoxLayout, QFormLayout, QLineEdit, QHBoxLayout, QComboBox, QAction, QMainWindow, QFileDialog
+from qimage2ndarray import array2qimage
+import matplotlib.image as mpimg
+from crop import smart_crop
+from os.path import dirname
 
+class ImageArea(QLabel):
+    def __init__(self, parent):
+        QLabel.__init__(self, parent)
+        self.setMinimumSize(1, 1)
+        self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
+        self.origin = QPoint()
+        self.startx = None # no selection so far
+        self.resize(800, 600)
+        self.show()
 
-img2 = None
-first = True
+    def setImage(self, image):
+        self.pixmap = image
+        self.pixmap_scale = self.pixmap.scaled(self.width(),self.height(), Qt.KeepAspectRatio)
+        self.setPixmap(self.pixmap_scale)
 
-x1,y1, x2, y2 = None, None, None ,  None
+    def resizeEvent(self, event):
+        self.pixmap_scale = self.pixmap.scaled(self.width(),self.height(), Qt.KeepAspectRatio)
+        self.setPixmap(self.pixmap_scale)
+        self.resize(self.width(), self.height())
 
-
-def rotatez(p, angle):
-    matz = np.array([
-        [np.cos(angle), np.sin(angle), 0],
-        [-np.sin(angle), np.cos(angle), 0],
-        [0, 0, 1]])
-    return p @ matz
-
-def rotatey(p, angle):
-    maty = np.array([
-        [np.cos(angle), 0, -np.sin(angle)],
-        [0, 1, 0],
-        [np.sin(angle), 0, np.cos(angle)]])
-
-    return p @ maty
-
-def rotate_axe(axe, target_point, angles):
-        only1 = False
-        if not isinstance(angles,list) and not isinstance(angles,np.ndarray):
-            angles = [angles]
-            only1 = True
-        ux = axe[0]
-        uy = axe[1]
-        uz = axe[2]
-        res = target_point @ np.array([[
-                [ ux * ux * (1 - c) + c, ux * uy * (1 -c) + uz * s, ux * uz * (1 -c) - uy * s],
-                [ ux * uy * (1 - c) - uz * s, uy * uy * (1 - c) + c, uy * uz *(1-c) + ux * s],
-                [  ux * uz * (1 - c) + uy * s, uy * uz * (1 -c) - ux *s, uz * uz * (1-c) + c]
-            ] for c, s in [(np.cos(angle), np.sin(angle)) for angle in angles]])
-
-        return (res[0] if only1 else res)
-
-def norm(v):
-    return np.sqrt(v[0]*v[0] + v[1] * v[1] + v[2] * v[2])
-
-
-def line_select_callback(eclick, erelease):
-    global x1, x2, y1, y2
     
-    'eclick and erelease are the press and release events'
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            pos = event.pos()
+            self.startx, self.starty = (pos.x(), pos.y())
+            self.origin = QPoint(pos)
+            self.rubberBand.setGeometry(QRect(self.origin, QSize()))
+            self.rubberBand.show()
     
-    x1, y1 = int(eclick.xdata), int(eclick.ydata)
-    x2, y2 = int(erelease.xdata), int(erelease.ydata)
-    print("(%3.2f, %3.2f) --> (%3.2f, %3.2f)" % (x1, y1, x2, y2))
-
-def change_text_button(label):
-    axbox2.clear()
-    button_box.__init__(axbox2, label)
-    button_box.on_clicked(make_crop)
-
-def do_back(event_back):
-    global x1, x2, y1, y2
-
-    if button_box.label.get_text() == "BasicCrop":
-        img_ax.imshow(img)
-
-    elif button_box.label.get_text() == "Save":
-        img_ax.imshow(img2)
-
-    previous = {
-        "Save": 'BasicCrop',
-        'BasicCrop': 'SmartCrop',
-        'SmartCrop': 'SmartCrop'
-    }
-
-    change_text_button(previous[button_box.label.get_text()])
-    x1, x2, y1, y2 = None, None, None, None
-    plt.draw()
-
-def make_crop(event_crop):
-    global x1, x2, y1, y2
-    global img2, img3, first, cylindric
-    global button_box
-
-    if button_box.label.get_text() == "BasicCrop":
-        if x1 is None:
-            x1, y1 = 0, 0
-            x2 = img.shape[1]
-            y2 = img.shape[0]
-
-        img3 = img2[y1:y2,x1:x2,:]
-        img_ax.imshow(img3)
-        change_text_button("Save")
-        plt.draw()
-        return
-    elif button_box.label.get_text() == "Save":
-        name, ext = splitext(img_file)
-        mpimg.imsave(name + "_perspective" + ext, img3)
-        plt.draw()
-        return
-
-    if x1 is None:
-        x1, y1 = 0, 0
-        x2 = img.shape[1]
-        y2 = img.shape[0]
-
-    print("Start smart crop")
-    first = False
-
-    posx = (y1 + y2)/2
-    posy = (x1 + x2)/2
-    width = int((x2 - x1))
-    height = int((y2 - y1))
-
-    if cylindric:
-        cylindric = 2
+    def mouseMoveEvent(self, event):
     
-
-    pixel_size = sensor_height/sensor_nb_height
-
-    mid_sensor_pos = (mid_sensor - np.array([posx, posy])) * pixel_size
-    mid_sensor_pos = np.array([fl, mid_sensor_pos[0], mid_sensor_pos[1]])
-
-    mid_sensor_pos = mid_sensor_pos * fl / norm(mid_sensor_pos)
-
-    angle0 = np.arcsin(mid_sensor_pos[1]/fl) 
-    angle1 = np.arcsin(mid_sensor_pos[2]/(fl* np.cos(angle0)))
-
-
-    target_point = rotatey(rotatez([[fl, 0, 0]], angle0), angle1)
-    p2 = np.array([
-        [fl, (mid_sensor[0]-posx) * pixel_size, (posy - mid_sensor[1]) * pixel_size],
-        [fl, (mid_sensor[0]-y1) * pixel_size, (x1 - mid_sensor[1]) * pixel_size],
-        [fl, (mid_sensor[0]-posx) * pixel_size, (x1 - mid_sensor[1]) * pixel_size],
-        [fl, (mid_sensor[0]-y1) * pixel_size, (posy - mid_sensor[1]) * pixel_size],
-        [fl, (mid_sensor[0]-y2) * pixel_size, (x2 - mid_sensor[1]) * pixel_size],
-        [fl, (mid_sensor[0]-posx) * pixel_size, (x2 - mid_sensor[1]) * pixel_size],
-        [fl, (mid_sensor[0]-y2) * pixel_size, (posy - mid_sensor[1]) * pixel_size]])
-
-    p3 = rotatez(rotatey(p2, -angle1), -angle0)
-
-    if cylindric:
-        p3 = p3 * fl/np.sqrt(p3[:,0:1] * p3[:,0:1] + p3[:,1:2] * p3[:,1:2] + p3[:,2:3] * p3[:,2:3])
-
-        sensor2_mid = p3[0]
-
-        height_length = 2 * np.max(
-            [np.abs(np.max(p3[:,1]) - sensor2_mid[1]),
-             np.abs(np.min(p3[:,1]) - sensor2_mid[1])])
+        if not self.origin.isNull():
+            self.rubberBand.setGeometry(QRect(self.origin, event.pos()).normalized())
     
-        angle = 2 * np.max([
-            np.abs(np.max(np.arctan(p3[:,2:3]/p3[:,0:1])) - np.arctan(sensor2_mid[2]/sensor2_mid[0])),
-            np.abs(np.min(np.arctan(p3[:,2:3]/p3[:,0:1])) - np.arctan(sensor2_mid[2]/sensor2_mid[0]))])
-
-        pixel_angle = angle/width
-
-        pixel_size2 = np.min([
-           height_length/height,
-           pixel_angle * fl]
-        )
-
-        width2 = int(angle * fl/pixel_size2)
-        height2 = int(height_length/pixel_size2)
-        pixel_angle = angle/width2
-    else:    
-        p3 = p3 * fl/p3[:,0:1]
-    
-        sensor2_mid = p3[0]
-        height_length = 2 * np.max(
-            [np.abs(np.max(p3[:,1]) - sensor2_mid[1]),
-             np.abs(np.min(p3[:,1]) - sensor2_mid[1])])
-
-        width_length = 2 * np.max(
-            [np.abs(np.max(p3[:,2]) - sensor2_mid[2]),
-             np.abs(np.min(p3[:,2]) - sensor2_mid[2])]) 
+    def mouseReleaseEvent(self, event):
+        pos = event.pos()
+        self.endx, self.endy = (pos.x(), pos.y())
+        print (self.startx, self.starty)
+        print (self.endx, self.endy)
+        if event.button() == Qt.LeftButton:
+            self.rubberBand.hide()
         
 
-        pixel_size2 = np.min([
-            height_length/height,
-            width_length/width])
-        pixel_size2 *= 0.8
-        height2 = int(height_length/pixel_size2)
-        width2 = int(width_length/pixel_size2)
+INITIAL, SMARTCROPPED, CROPPED = 0, 1, 2
 
-    size_rectangle = np.array([height2, width2])
-    img2 = np.zeros((height2,width2, 3),dtype=np.uint8)
+class Window(QMainWindow): 
+    def __init__(self):
+        QMainWindow.__init__(self)
+        self.label = ImageArea(self)
+        self.status = INITIAL
+        widget = QWidget();
+        self.setCentralWidget(widget);
 
+        openFile = QAction(QIcon('open.png'), 'Open', self)
+        openFile.triggered.connect(self.showDialog)
 
-    mid_rectangle = size_rectangle/2
+        saveFile = QAction(QIcon('save.png'), 'Save', self)
+        saveFile.triggered.connect(self.saveDialog)
 
-    if cylindric == 1:
-        unit_height = np.array(
-            [0,
-            1,
-            0])
-    else:       
-        unit_height = rotatey(rotatez([[0, 1, 0]], angle0), angle1)[0]
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(openFile) 
+        fileMenu.addAction(saveFile)          
+        inputWidget = QWidget();
+        hbox = QHBoxLayout(inputWidget)
 
-
-
-    vec_height = pixel_size2 * unit_height
-    pos2 = vec_height * (mid_rectangle[0] - np.arange(height2).reshape(height2, 1))
-
-
-
-    if cylindric == 1:
-        pos1 = np.array([
-            target_point @ (np.array([
-                [np.cos(pixel_angle*h), 0, np.sin(pixel_angle*h)],
-                [0,1,0],
-                [-np.sin(pixel_angle*h), 0, np.cos(pixel_angle*h)]
-                ]).transpose())  for h in [mid_rectangle[1]-x for x in range(width2)]])
-    elif cylindric == 2:
-        pos1 = rotate_axe(unit_height, target_point[0], 
-            [pixel_angle*h for h in [mid_rectangle[1]-x for x in range(width2)]])
-    else:
-        unit_width = rotatey(rotatez([[0, 0, 1]], angle0), angle1)[0]
+        self.cropButton = QPushButton("SmartCrop")
+        self.cropButton.clicked.connect(self.crop)
+        backButton =  QPushButton("Back")
+        backButton.clicked.connect(self.back)
+        vbox = QVBoxLayout()
+        widget.setLayout(vbox)
+        #hbox.addStretch(1)
+        vbox.addWidget(self.label)
+        #hbox = QHBoxLayout()
+        vbox.addWidget(inputWidget)
+        hbox.addWidget(self.cropButton)
+        hbox.addWidget(backButton)
+        fbox = QFormLayout()
 
 
-        vec_width = pixel_size2  * unit_width
-        pos1 = target_point + vec_width * (np.arange(width2).reshape(width2, 1) - mid_rectangle[1])
+        comboLayout= QHBoxLayout()
+        cb = QComboBox()
+        cb.addItem("Rectilinear")
+        cb.addItem("Cylindric")
+        comboLayout.addWidget(cb)
+        hbox.addLayout(comboLayout)
+        l1 = QLabel("Focal 35mm:")
+        self.edit_fl  = QLineEdit()
+        self.edit_fl.setMaximumWidth(self.edit_fl.sizeHint().width())
+        fbox.addRow(l1, self.edit_fl)
+        hbox.addLayout(fbox)
+        cb.currentIndexChanged.connect(lambda :self.selectionchange(cb))
 
-    for y in range(width2):
-        x = pos1[y:y+1,:] + pos2
-        z =  x[:, 1:3] * fl/x[:,0:1]
-        orig = (np.array([mid_sensor]) + z * np.array([[-1/pixel_size, 1/pixel_size]])).astype(int)
+        self.resize(800, 600)
+        self.setWindowTitle('Buttons')
+        self.load_image_file("D:\Dropbox\Quebec2017\DSCF1461.jpg") 
+        self.cylindric = False 
+        inputWidget.setFixedHeight(50)
+        self.show()
 
-        line = (
-            (orig[:, 0:1] < sensor_nb_height) &
-            (orig[:, 0:1] > 0) &
-            (orig[:, 1:2] < sensor_nb_width) &
-            (orig[:, 1:2] >0)
-            )[:, 0]
+    def showDialog(self):
+        fname = QFileDialog.getOpenFileName(self, 'Open file', '/')
+        self.load_image_file(fname[0])
 
-        img2[line, y, :] =  img[orig[line,0], orig[line,1]]
-
-    x1, x2, y1, y2 = None, None, None, None
-    change_text_button("BasicCrop")
-    img_ax.imshow(img2)
-    plt.draw()
-    print("End smart crop")
-
-def toggle_selector(event):
-    print(' Key pressed.')
-    if event.key in ['Q', 'q'] and toggle_selector.RS.active:
-        print(' RectangleSelector deactivated.')
-        toggle_selector.RS.set_active(False)
-    if event.key in ['A', 'a'] and not toggle_selector.RS.active:
-        print(' RectangleSelector activated.')
-        toggle_selector.RS.set_active(True)
-
-def submit_fl(fl_text):
-    global fl
-    print("FL changed")
-    fl = float(fl_text)
-
-
-fig, img_ax = plt.subplots()
-plt.subplots_adjust(bottom=0.2)
+    def saveDialog(self):
+        fname = QFileDialog.getSaveFileName(self, 'Saves file', dirname(self.filename))
+        mpimg.imsave(fname[0], self.img)
 
 
 
+    def back(self):
+        if self.status == SMARTCROPPED:
+            self.cropButton.setText("SmartCrop")
+            self.label.startx = None
+            self.status = INITIAL
+            self.set_image(self.img_orig)
+        elif self.status in [SMARTCROPPED, CROPPED]:
+            self.cropButton.setText("SmartCrop")
+            self.label.startx = None
+            self.status = SMARTCROPPED
+            self.set_image(self.img_sc)
 
-if len(sys.argv) == 1:
-    #img_file = "D:\OneDrive\Images\Madère\DSCF4654.jpg"
-    img_file = "D:\Dropbox\Quebec2017\DSCF1461.jpg"
-else:
-    img_file = sys.argv[1]
+    def crop(self):
+        if self.status == INITIAL:
+            self.img_sc = self.smart_crop()
+            self.status = SMARTCROPPED
+            self.cropButton.setText("BasicCrop")
+            self.label.startx = None
+            self.set_image(self.img_sc)
+        elif self.status in [SMARTCROPPED, CROPPED]:
+            self.img_crop = self.smart_crop()
+            self.status = CROPPED
+            self.cropButton.setText("BasicCrop")
+            self.label.startx = None
+            self.set_image(self.img_crop)
 
+    def selectionchange(self, cb):
+        if cb.currentText() == "Rectilinear":
+            self.cylindric = False
+        else:
+            self.cylindric = True
 
-img=mpimg.imread(img_file)
+    def crop_area(self):
+        ratio = self.img.shape[1]/self.label.pixmap_scale.width()
+        if self.label.startx is None:
+            x1 = 0
+            y1 = 0
+            x2 = self.img.shape[1]
+            y2 = self.img.shape[0]
+        else:
+            x1 = ratio * self.label.startx
+            y1 = ratio * self.label.starty
+            x2 = ratio * self.label.endx
+            y2 = ratio * self.label.endy
+        
+        return [x1, y1], [x2, y2]
 
-cylindric = False
-try:
-    import PIL.Image
-    img_pil = PIL.Image.open(img_file)
+    def basic_crop(self):
+        start_pos, end_pos = self.crop_area()
+        return basic_crop(self.img, start_pos, end_pos)
 
-    import PIL.ExifTags
-    exif = {
-        PIL.ExifTags.TAGS[k]: v
-        for k, v in img_pil._getexif().items()
-        if k in PIL.ExifTags.TAGS 
-    }
-    fl = exif["FocalLengthIn35mmFilm"]
-except Exception:
-    fl = 35
+    def smart_crop(self):
+        start_pos, end_pos = self.crop_area()
 
-sensor_nb_height = img.shape[0]
-sensor_nb_width = img.shape[1]
-
-mid_sensor = [sensor_nb_height/2, sensor_nb_width/2]
-
-# calculation to support different ration (m43..)
-sensor_height = 24
-sensor_width = 36
-sensor_diag = np.sqrt(24*24 + 36*36)
-ratio = sensor_nb_width/sensor_nb_height
-
-sensor_height = sensor_diag/np.sqrt(1 + ratio * ratio)
-sensor_width = ratio * sensor_height
-cylindric = False
-
-img_axe = plt.gca()
-
-imgplot = plt.imshow(img)
-
-axbox = plt.axes([0.15, 0.05, 0.1, 0.075])
-text_box = TextBox(axbox, 'FL:', initial=str(fl))
-text_box.on_submit(submit_fl)
-
-axbox2 = plt.axes([0.25, 0.05, 0.2, 0.075])
-button_box = Button(axbox2, 'SmartCrop')
-button_box.on_clicked(make_crop)
-
-axbox3 = plt.axes([0.45, 0.05, 0.1, 0.075])
-button_box2 = Button(axbox3, 'Back')
-button_box2.on_clicked(do_back)
-
-axbox4 = plt.axes([0.55, 0.05, 0.15, 0.075])
-labels = ["cylindric"]
-check = CheckButtons(axbox4, labels)
-
-def func(label):
-    global cylindric
-    cylindric = check.get_status()[0]
-
-check.on_clicked(func)
+        return smart_crop(self.img, 
+            start_pos,
+            end_pos,
+            self.fl, self.cylindric)
 
 
-# drawtype is 'box' or 'line' or 'none'
-toggle_selector.RS = RectangleSelector(img_ax, line_select_callback,
-                                       drawtype='box', useblit=True,
-                                       button=[1, 3],  # don't use middle button
-                                       minspanx=5, minspany=5,
-                                       spancoords='pixels',
-                                       interactive=True)
-#plt.connect('key_press_event', toggle_selector)
-plt.show()
+
+
+    def load_image_file(self, imgfile):
+        try:
+            import PIL.Image
+            img_pil = PIL.Image.open(imgfile)
+
+            import PIL.ExifTags
+            exif = {
+                PIL.ExifTags.TAGS[k]: v
+                for k, v in img_pil._getexif().items()
+                if k in PIL.ExifTags.TAGS 
+            }
+            self.fl = exif["FocalLengthIn35mmFilm"]
+        except Exception:
+            self.fl = 35
+        self.edit_fl.setText(str(self.fl))
+        img = mpimg.imread(imgfile)
+        self.filename = imgfile
+        self.img_orig = img
+        self.set_image(img)
+        self.status = INITIAL
+        self.cropButton.setText("SmartCrop")
+
+    
+    def set_image(self, img):
+        self.img = img
+        self.label.setImage(QtGui.QPixmap.fromImage(array2qimage(self.img)))
+        self.show()
+
+if __name__ == '__main__':
+    import sys
+    app = QApplication(sys.argv)
+    
+    window = Window()
+
+    window.show()
+    sys.exit(app.exec_())
