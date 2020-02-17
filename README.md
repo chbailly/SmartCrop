@@ -48,10 +48,15 @@ This is based on a basic workflow, you see the status with label of the button u
 
 The workflow is:
 1. Load an image from menu
-2. create a crop rectangle (optional)
-3. Click on SmartCrop and wait a bit, the button label switches to BasicCrop when finished
-4. create a crop rectangle (optional)
-5. Click on BasicCrop
+2. select the perspective you want to generate (rectilinear or cylindric) = see suggestion below
+3. create a crop rectangle (optional)
+4. Click on SmartCrop and wait a bit, the button label switches to BasicCrop when finished
+5. create a crop rectangle (optional)
+6. Click on BasicCrop
+
+Suggestions:
+* Use rectlinear if the crop width is not too large. It will keep the line straightened
+* For large width crops, you can try the cylindric projection
 
 Remarks:
 * The back button will go back in the workflow described above
