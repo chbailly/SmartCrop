@@ -25,9 +25,9 @@ Copy the 2 files in the installation directory:
 + need the qimage2ndarray package(https://pypi.org/project/qimage2ndarray)
 download zip file: https://github.com/hmeine/qimage2ndarray/archive/release-1.8.2.zip
 
-Copy the directory qimage2ndarray from the zip in the installation directory
+Simply copy the directory qimage2ndarray from the zip in the installation directory
 
-So you should have these files installed:
+At the end, you should have these files installed:
 crop.py
 smart_crop.py
 qimage2ndarray/__init__.py
