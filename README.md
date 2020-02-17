@@ -8,30 +8,50 @@ This tool enables to rotate the camera toward the subject you want to crop.
 This will generate a **more natural picture** just as if you had shot it directly directed toward your subject.
 Besides, if the crop remains large (for the width), the cylindric perspective can improve even more the image.
 
-# Beware:
-* do not use the loop tool
-* if you change FL, press enter otherwise the change is ignored. The tool reads the Focal length in the EXIF so you may not need to change it
+You can see examples in the wiki
 
 # Requirements
 
-python3
+Many distributions like anaconda include these packages:
+python3, PyQt5
 matplotlib, numpy and PIL
-Many distributions like anaconda include all.
+
+# Installation
+
+Copy the 2 files in the installation directory:
+* crop.py
+* smart_crop.py
+
++ need the qimage2ndarray package(https://pypi.org/project/qimage2ndarray)
+download zip file: https://github.com/hmeine/qimage2ndarray/archive/release-1.8.2.zip
+
+Copy the directory qimage2ndarray from the zip in the installation directory
+
+So you should have these files installed:
+crop.py
+smart_crop.py
+qimage2ndarray/__init__.py
+qimage2ndarray/dynqt.py.py
+qimage2ndarray/qimageview_python.py
+qimage2ndarray/qrgb_polyfill.py
+qimage2ndarray/qt_driver.py
+
+
 
 # How to launch it
 
-python smart_crop.py <image_file>
+python smart_crop.py
 
 # How to use it
 
 This is based on a basic workflow, you see the status with label of the button used to crop.
 
 The workflow is:
-1. create a crop rectangle (optional)
-2. Click on SmartCrop and wait a bit
-3. create a crop rectangle (optional)
-4. Click on BasicCrop
-5. click on Save =>the image is saved in your directory with "_perspective" extension
+1. Load an image from menu
+2. create a crop rectangle (optional)
+3. Click on SmartCrop and wait a bit, the button label switches to BasicCrop when finished
+4. create a crop rectangle (optional)
+5. Click on BasicCrop
 
 Remarks:
 * The back button will go back in the workflow described above
@@ -39,4 +59,4 @@ Remarks:
 
 IMPORTANT:
 * Use an original image untouched by any other cropping/perspective correction
-* THE FL used is the 35mm equivalent focal length. This tool will work also with different ratio than 3:2
+* THE focal used is the 35mm equivalent focal length read from the EXIF. If this is not present, set it explicitely in the text area. This tool will work also with different ratio than 3:2
