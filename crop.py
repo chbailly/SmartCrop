@@ -79,7 +79,7 @@ def basic_crop(img, start_pos, end_pos):
     x1, y1 = start_pos
     x2, y2 = end_pos
 
-    return img2[y1:y2,x1:x2,:]
+    return img[int(y1):int(y2),int(x1):int(x2),:]
 
 
 def smart_crop(img, start_pos, end_pos, fl, cylindric):

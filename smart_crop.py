@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QRubberBand, QPushBut
     QHBoxLayout, QVBoxLayout, QFormLayout, QLineEdit, QHBoxLayout, QComboBox, QAction, QMainWindow, QFileDialog
 from qimage2ndarray import array2qimage
 import matplotlib.image as mpimg
-from crop import smart_crop
+from crop import smart_crop, basic_crop
 from os.path import dirname
 
 class ImageArea(QLabel):
@@ -18,18 +18,20 @@ class ImageArea(QLabel):
         self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
         self.origin = QPoint()
         self.startx = None # no selection so far
+        self.pixmapimg = None
         self.resize(800, 600)
         self.show()
 
     def setImage(self, image):
-        self.pixmap = image
-        self.pixmap_scale = self.pixmap.scaled(self.width(),self.height(), Qt.KeepAspectRatio)
+        self.pixmapimg = image
+        self.pixmap_scale = self.pixmapimg.scaled(self.width(),self.height(), Qt.KeepAspectRatio)
         self.setPixmap(self.pixmap_scale)
 
     def resizeEvent(self, event):
-        self.pixmap_scale = self.pixmap.scaled(self.width(),self.height(), Qt.KeepAspectRatio)
-        self.setPixmap(self.pixmap_scale)
-        self.resize(self.width(), self.height())
+        if self.pixmapimg:
+            self.pixmap_scale = self.pixmapimg.scaled(self.width(),self.height(), Qt.KeepAspectRatio)
+            self.setPixmap(self.pixmap_scale)
+            self.resize(self.width(), self.height())
 
     
     def mousePressEvent(self, event):
@@ -50,8 +52,8 @@ class ImageArea(QLabel):
         self.endx, self.endy = (pos.x(), pos.y())
         print (self.startx, self.starty)
         print (self.endx, self.endy)
-        if event.button() == Qt.LeftButton:
-            self.rubberBand.hide()
+        #if event.button() == Qt.LeftButton:
+         #   self.rubberBand.hide()
         
 
 INITIAL, SMARTCROPPED, CROPPED = 0, 1, 2
@@ -107,7 +109,7 @@ class Window(QMainWindow):
 
         self.resize(800, 600)
         self.setWindowTitle('Buttons')
-        self.load_image_file("D:\Dropbox\Quebec2017\DSCF1461.jpg") 
+        #self.load_image_file("D:\Dropbox\Quebec2017\DSCF1461l.jpg") 
         self.cylindric = False 
         inputWidget.setFixedHeight(50)
         self.show()
@@ -120,7 +122,11 @@ class Window(QMainWindow):
         fname = QFileDialog.getSaveFileName(self, 'Saves file', dirname(self.filename))
         mpimg.imsave(fname[0], self.img)
 
-
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Escape:
+            self.label.rubberBand.hide()
+            self.label.startx = None
+        event.accept()
 
     def back(self):
         if self.status == SMARTCROPPED:
@@ -128,25 +134,25 @@ class Window(QMainWindow):
             self.label.startx = None
             self.status = INITIAL
             self.set_image(self.img_orig)
-        elif self.status in [SMARTCROPPED, CROPPED]:
-            self.cropButton.setText("SmartCrop")
+        elif self.status == CROPPED:
+            self.cropButton.setText("BasicCrop")
             self.label.startx = None
             self.status = SMARTCROPPED
             self.set_image(self.img_sc)
 
     def crop(self):
+        self.label.rubberBand.hide()
         if self.status == INITIAL:
             self.img_sc = self.smart_crop()
             self.status = SMARTCROPPED
             self.cropButton.setText("BasicCrop")
-            self.label.startx = None
             self.set_image(self.img_sc)
         elif self.status in [SMARTCROPPED, CROPPED]:
-            self.img_crop = self.smart_crop()
+            self.img_crop = self.basic_crop()
             self.status = CROPPED
             self.cropButton.setText("BasicCrop")
-            self.label.startx = None
             self.set_image(self.img_crop)
+        self.label.startx = None
 
     def selectionchange(self, cb):
         if cb.currentText() == "Rectilinear":
