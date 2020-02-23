@@ -82,7 +82,7 @@ def basic_crop(img, start_pos, end_pos):
     return img[int(y1):int(y2),int(x1):int(x2),:]
 
 
-def smart_crop(img, start_pos, end_pos, fl, cylindric):
+def smart_crop(img, start_pos, end_pos, fl, cylindric, angle_rot):
     x1, y1 = start_pos
     x2, y2 = end_pos
 
@@ -180,44 +180,48 @@ def smart_crop(img, start_pos, end_pos, fl, cylindric):
         height2 = int(height_length/pixel_size2)
         width2 = int(width_length/pixel_size2)
 
-    size_rectangle = np.array([height2, width2])
-    img2 = np.zeros((height2,width2, 3),dtype=np.uint8)
-
-
-    mid_rectangle = size_rectangle/2
 
     if cylindric == 1:
         unit_height = np.array(
-            [0,
+            [[0,
             1,
-            0])
+            0]])
     else:       
         unit_height = rotatey(rotatez([[0, 1, 0]], angle0), angle1)[0]
 
+    unit_width = rotatey(rotatez([[0, 0, 1]], angle0), angle1)[0]
+    axe = np.cross(unit_width, unit_height)
+    unit_width = rotate_axe(axe, unit_width, [angle_rot])
+    unit_height = rotate_axe(axe, unit_height, [angle_rot])
 
+    enlarge = np.abs(1/np.cos(angle_rot))
+    width2 = int(width2 * enlarge)
+    height2 = int(height2 * enlarge)
+    img2 = np.zeros((height2,width2, 3),dtype=np.uint8)
+    size_rectangle = np.array([height2, width2])
+    mid_rectangle = size_rectangle/2
 
     vec_height = pixel_size2 * unit_height
-    pos2 = vec_height * (mid_rectangle[0] - np.arange(height2).reshape(height2, 1))
-
-
 
     if cylindric == 1:
-        pos1 = np.array([
-            target_point @ (np.array([
-                [np.cos(pixel_angle*h), 0, np.sin(pixel_angle*h)],
-                [0,1,0],
-                [-np.sin(pixel_angle*h), 0, np.cos(pixel_angle*h)]
-                ]).transpose())  for h in [mid_rectangle[1]-x for x in range(width2)]])
-    elif cylindric == 2:
         pos1 = rotate_axe(unit_height, target_point[0], 
             [pixel_angle*h for h in [mid_rectangle[1]-x for x in range(width2)]])
+        #pos1 = np.array([
+        #    target_point @ (np.array([
+        #        [np.cos(pixel_angle*h), 0, np.sin(pixel_angle*h)],
+        #        [0,1,0],
+        #        [-np.sin(pixel_angle*h), 0, np.cos(pixel_angle*h)]
+        #        ]).transpose())  for h in [mid_rectangle[1]-x for x in range(width2)]])
+    elif cylindric == 2:
+        pos1 = rotate_axe(unit_height[0], target_point[0], 
+            [pixel_angle*h for h in [mid_rectangle[1]-x for x in range(width2)]])
     else:
-        unit_width = rotatey(rotatez([[0, 0, 1]], angle0), angle1)[0]
-
-
         vec_width = pixel_size2  * unit_width
         pos1 = target_point + vec_width * (np.arange(width2).reshape(width2, 1) - mid_rectangle[1])
+        
+        
 
+    pos2 = vec_height * (mid_rectangle[0] - np.arange(height2).reshape(height2, 1))
     for y in range(width2):
         x = pos1[y:y+1,:] + pos2
         z =  x[:, 1:3] * fl/x[:,0:1]
