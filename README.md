@@ -50,9 +50,11 @@ The workflow is:
 1. Load an image from menu
 2. select the perspective you want to generate (rectilinear or cylindric) = see suggestion below
 3. create a crop rectangle (optional)
-4. Click on SmartCrop and wait a bit, the button label switches to BasicCrop when finished
-5. create a crop rectangle (optional)
-6. Click on BasicCrop
+4. Click on SmartCrop and wait a bit, the button label switches to Rotate when finished
+5. Draw a line (this line will become horizontal when the image will be rotated). It sets an anglevalue in the input textarea but you can change the value explicitely.
+6. Click on rotate. If the angle was set to zero, it won't do anything.
+7. create a crop rectangle (optional)
+8. Click on BasicCrop
 
 Suggestions:
 * Use rectlinear if the crop width is not too large. It will keep the line straightened
@@ -60,7 +62,7 @@ Suggestions:
 
 Remarks:
 * The back button will go back in the workflow described above
-* selecting a crop is optional, which means all the image is selected when you crop. Click on crop to go to the next step even if you do not really crop
+* If you don't select any area for cropping, then the function smartCrop will process the whole area. Can be usefull if you want to generate a cylindric projection on the whole image
 
 IMPORTANT:
 * Use an original image untouched by any other cropping/perspective correction
