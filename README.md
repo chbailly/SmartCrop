@@ -8,7 +8,11 @@ This tool enables to rotate the camera toward the subject you want to crop.
 This will generate a **more natural picture** just as if you had shot it directly directed toward your subject.
 Besides, if the crop remains large (for the width), the cylindric perspective can improve even more the image.
 
-You can see examples in the wiki
+# demo video
+
+https://www.dropbox.com/s/w7qjdod1x68723m/2020-02-23%2010-24-29.mp4?dl=0
+
+You can see more examples in the wiki
 
 # Requirements
 
