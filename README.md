@@ -1,3 +1,13 @@
+```mermaid
+sequenceDiagram
+
+AAAA ->> BBB: test
+BBBBBBB ->> CCCCC: test2
+BBBBBBBB ->> CCCCCCC: test2
+BBBBBBBBB->> CCCCCCCC: test2
+```
+
+
 # SmartCrop
 
 There are 2 main ideas:
